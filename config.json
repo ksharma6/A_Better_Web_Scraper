@@ -1,5 +1,5 @@
 {
     "URL" : "https://neetcode.io/practice",
-    "path" : "export_csv_location",
-    "firefox_path" : "path_to_firefox"
+    "path" : "export_path_for_csv"
+    
 }
