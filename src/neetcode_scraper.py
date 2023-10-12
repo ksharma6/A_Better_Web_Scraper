@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException
 
 from bs4 import BeautifulSoup
+import lxml
 
 import pandas as pd
 
@@ -13,7 +14,7 @@ class NeetCodeScraper:
         """Init parameters"""
         self.url = data['URL']
         self.csv_path = data['path']
-        self.driver = webdriver.Firefox(data['firefox_path'])
+        self.driver = webdriver.Firefox()
         self.problem_names = []
         self.leetcode_links = []
         self.difficulties = []
@@ -29,7 +30,7 @@ class NeetCodeScraper:
         self.driver.find_element(By.LINK_TEXT, '🔮  NeetCode All').click()
 
         html = self.driver.page_source
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, "lxml")
 
         for link in soup.find_all('a',href = True, class_ = 'table-text text-color' ):
             self.problem_names.append(link.text.strip())
@@ -40,7 +41,7 @@ class NeetCodeScraper:
         for link in soup.find_all('td',class_='diff-col'):
             self.difficulties.append(link.text.strip())
         print('static page successfully scraped')
-        self.driver.close()
+        
 
     def scrape_dynamic_page(self):
         """
@@ -55,7 +56,7 @@ class NeetCodeScraper:
 
             category_xpath = first + 'app-accordion/div/button'
 
-            category_button =  WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, category_xpath)))
+            category_button =  WebDriverWait(self.driver, 20).until(EC.element_to_be_clickable((By.XPATH, category_xpath)))
             category_button.click()   
 
             for j in range(59):
@@ -64,9 +65,10 @@ class NeetCodeScraper:
 
                 try:
                     #click Video Solution
-                    element = driver.find_element(By.XPATH, vid_solution_xpath)
-                    driver.execute_script("arguments[0].click()", element)
-
+                    element = self.driver.find_element(By.XPATH, vid_solution_xpath)
+                    self.driver.execute_script("arguments[0].click()", element)
+                    html = self.driver.page_source
+                    soup = BeautifulSoup(html,"lxml")
                     #scrape category
                     for link in soup.find('p',class_='ng-tns-c41-' + str(i)):
                         self.categories.append(link.text.strip())
@@ -76,22 +78,21 @@ class NeetCodeScraper:
 
                 #Scrape youtube url
                 youtube_xpath = '/html/body/app-root/app-pattern-table-list/div/div[2]/app-pattern-table[' + str(i+1) + ']/app-accordion/div/div/app-table/app-modal[2]/div/div[2]/header/h1/a'
-                youtube_link=driver.find_element(By.XPATH, youtube_xpath)
+                youtube_link= self.driver.find_element(By.XPATH, youtube_xpath)
                 self.youtube_links.append(youtube_link.get_attribute("href"))
 
                 counter +=1
 
                 #click close button
-                close_button = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '/html/body/app-root/app-pattern-table-list/div/div[2]/app-pattern-table[' + str(i +1) + ']/app-accordion/div/div/app-table/app-modal[2]/div/div[2]/footer/button/b')))
+                close_button = WebDriverWait(self.driver, 20).until(EC.element_to_be_clickable((By.XPATH, '/html/body/app-root/app-pattern-table-list/div/div[2]/app-pattern-table[' + str(i +1) + ']/app-accordion/div/div/app-table/app-modal[2]/div/div[2]/footer/button/b')))
                 close_button.click()
         print("dynamic page successfully scraped")
-
+        
 
     def write_2_csv(self):
         """
         Write scraped data as csv to csv_path
         """
-        self.driver.quit()
         data = {"Category": self.categories,
         "Difficulty": self.difficulties, 
         "Problems": self.problem_names, 
@@ -100,6 +101,8 @@ class NeetCodeScraper:
 
         df = pd.DataFrame(data)
         df.to_csv(self.csv_path)
+        print('data written successfully to ' + self.csv_path)
+        self.driver.close()
 
 
 
